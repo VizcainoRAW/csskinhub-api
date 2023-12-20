@@ -18,7 +18,7 @@ class SteamItem(models.Model):
         return self.name
 
 #Ceate, Abstract class for extend cases, capsules, packages, etc.
-class Create(SteamItem):
+class Crate(SteamItem):
     first_sale_date = models.DateField(_("First Sale Date"))
 
     class Meta:
@@ -77,7 +77,7 @@ class Category(models.Model):
         return reverse("Category_detail", kwargs={"pk": self.pk})
 
 
-class Case(Create):
+class Case(Crate):
 
     class Meta:
         verbose_name = _("Case")
@@ -86,7 +86,7 @@ class Case(Create):
     def get_absolute_url(self):
         return reverse("Case_detail", kwargs={"pk": self.pk})
 
-class Souvenir(Create):
+class Souvenir(Crate):
 
     class Meta:
         verbose_name = _("Souvenir")
@@ -146,8 +146,8 @@ class Skin(SteamItem):
 
         super().save(*args, **kwargs)
 
-class CreateSkin(Skin):
-    create = models.ForeignKey(Create, on_delete=models.CASCADE)
+class CrateSkin(Skin):
+    create = models.ForeignKey(Crate, on_delete=models.CASCADE)
     SPECIAL_CONDITION = None
 
     class Meta:
@@ -170,10 +170,10 @@ class CreateSkin(Skin):
 
         return url_list
 
-class SouvenirSkin(CreateSkin):
+class SouvenirSkin(CrateSkin):
     create = models.ForeignKey(Souvenir, on_delete=models.CASCADE)
     SPECIAL_CONDITION = 'Souvenir'
 
-class CaseSkin(CreateSkin):
+class CaseSkin(CrateSkin):
     create = models.ForeignKey(Case, on_delete=models.CASCADE)
     SPECIAL_CONDITION = 'StatTrak™'
