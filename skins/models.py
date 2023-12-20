@@ -1,5 +1,7 @@
 from audioop import reverse
 
+from urllib.parse import quote
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
@@ -117,20 +119,22 @@ class Skin(SteamItem):
 
     def get_absolute_url(self):
         return reverse("Skin_detail", kwargs={"pk": self.pk})
-
+    
     def get_steam_selling_list(self):
-        steam_selling_url_list=[]
+        steam_selling_url_list = []
         self._get_steam_selling_urls(steam_selling_url_list)
         return steam_selling_url_list
-        
+    
     def _get_steam_selling_urls(self, url_list):
         condition_list = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred']
         steamcommunity_selling_url = 'https://steamcommunity.com/market/listings/730/'
 
         for condition in condition_list:
-            steam_selling_url = f'{steamcommunity_selling_url}{self.weapon.name} {condition}'.lower().replace(' ', '%20')
+            steam_selling_url = f'{steamcommunity_selling_url}{quote(f'{self.weapon.name} | {self.name} ({condition})')}'
             url_list.append(steam_selling_url)
+
         return url_list
+
     
     def __str__(self):
         return self.weapon.name + " | " + self.name
@@ -156,15 +160,14 @@ class CreateSkin(Skin):
         
         return url_list
     
-    def _get_steam_selling_urls(self, url_list, special_condition_name):
+    def _get_steam_selling_urls(self, url_list):
         condition_list = ['Factory New', 'Minimal Wear', 'Field-Tested', 'Well-Worn', 'Battle-Scarred']
-        steamcommunity_selling_url = f'https://steamcommunity.com/market/listings/730/{special_condition_name}'
+        steamcommunity_selling_url = f'https://steamcommunity.com/market/listings/730/{self.SPECIAL_CONDITION}'
 
         for condition in condition_list:
-            condition_slug = condition.lower().replace(' ', '-')
-            skin_name_slug = self.name.lower().replace(' ', '%20')
-            steam_selling_url = f'{steamcommunity_selling_url}{self.weapon.name}{skin_name_slug}{condition_slug}'
+            steam_selling_url = f'{steamcommunity_selling_url}{quote(f'{self.weapon.name} | {self.name} ({condition})')}'
             url_list.append(steam_selling_url)
+
         return url_list
 
 class SouvenirSkin(CreateSkin):
