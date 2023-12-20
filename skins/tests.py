@@ -47,14 +47,16 @@ class TestSkinsModels(TestCase):
             min_float=0.1,
             max_float=0.5,
             collection=anubis_collection,
-            weapon=m4a4,
-            create=Souvenir.objects.create(
+            weapon=m4a4
+            )
+        m4a4_souvenir_skin.create.add(
+            Souvenir.objects.create(
                 name="Souvenir Package",
                 description="A package containing souvenir items",
                 image="https://example.com/souvenir-package.jpg",
                 first_sale_date='2020-01-01'
+                )
             )
-        )
 
         #Case skin
         m4a4_case_skin = CaseSkin.objects.create(

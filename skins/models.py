@@ -171,7 +171,7 @@ class CrateSkin(Skin):
         return url_list
 
 class SouvenirSkin(CrateSkin):
-    create = models.ForeignKey(Souvenir, on_delete=models.CASCADE)
+    create = models.ManyToManyField(Souvenir, verbose_name=_("Soubenir packages"))
     SPECIAL_CONDITION = 'Souvenir'
 
 class CaseSkin(CrateSkin):
