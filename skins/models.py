@@ -11,6 +11,9 @@ class SteamItem(models.Model):
 
     class Meta:
         abstract = True
+    
+    def __str__(self):
+        return self.name
 
 #Ceate, Abstract class for extend cases, capsules, packages, etc.
 class Create(SteamItem):
@@ -28,6 +31,32 @@ class Category(models.Model):
 
     def get_absolute_url(self):
         return reverse("category_detail", kwargs={"pk": self.pk})
+    
+class Rarity(models.Model):
+    name = models.TextField(_("Rarity name"))
+    
+    class Meta:
+        verbose_name = _("Rarity")
+        verbose_name_plural = _("Raritys")
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse("rarity_detail", kwargs={"pk": self.pk})
+
+class Pattern(models.Model):
+    name = models.TextField(_("Name"))
+
+    class Meta:
+        verbose_name = _("Pattern")
+        verbose_name_plural = _("Patterns")
+
+    def __str__(self):
+        return self.name
+
+    def get_absolute_url(self):
+        return reverse("Pattern_detail", kwargs={"pk": self.pk})
 
 class Collection(SteamItem):
     pass
@@ -47,7 +76,6 @@ class Category(models.Model):
 
 
 class Case(Create):
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = _("Case")
@@ -57,7 +85,6 @@ class Case(Create):
         return reverse("Case_detail", kwargs={"pk": self.pk})
 
 class Souvenir(Create):
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
 
     class Meta:
         verbose_name = _("Souvenir")
@@ -77,9 +104,9 @@ class Weapon(SteamItem):
         return reverse("Weapon_detail", kwargs={"pk": self.pk})
 
 class Skin(SteamItem):
-    weapon = models.ForeignKey(Weapon, on_delete=models.CASCADE)
-    rarity = models.CharField(_("Rarity"), max_length=50)
-    pattern_string = models.CharField(_("Pattern String"), max_length=50)
+    weapon = models.ForeignKey(Weapon, verbose_name=_("Weapon"), on_delete=models.CASCADE)
+    rarity = models.ForeignKey(Rarity, verbose_name=_("Rarity"), on_delete=models.CASCADE)
+    pattern = models.ForeignKey(Pattern, verbose_name=_("Pattern"), on_delete=models.CASCADE, default=None)
     min_float = models.FloatField(_("Minimum Float"))
     max_float = models.FloatField(_("Maximum Float"))
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
@@ -101,14 +128,19 @@ class Skin(SteamItem):
         steamcommunity_selling_url = 'https://steamcommunity.com/market/listings/730/'
 
         for condition in condition_list:
-            condition_slug = condition.lower().replace(' ', '-')
-            skin_name_slug = self.name.lower().replace(' ', '%20')
-            steam_selling_url = f'{steamcommunity_selling_url}{self.weapon.name}{skin_name_slug}{condition_slug}'
+            steam_selling_url = f'{steamcommunity_selling_url}{self.weapon.name} {condition}'.lower().replace(' ', '%20')
             url_list.append(steam_selling_url)
         return url_list
     
     def __str__(self):
         return self.weapon.name + " | " + self.name
+    
+    def save(self, *args, **kwargs):
+        if self.pattern_id is None and self.name:
+            default_pattern, _ = Pattern.objects.get_or_create(name=self.name)
+            self.pattern = default_pattern
+
+        super().save(*args, **kwargs)
 
 class CreateSkin(Skin):
     create = models.ForeignKey(Create, on_delete=models.CASCADE)
@@ -134,8 +166,6 @@ class CreateSkin(Skin):
             steam_selling_url = f'{steamcommunity_selling_url}{self.weapon.name}{skin_name_slug}{condition_slug}'
             url_list.append(steam_selling_url)
         return url_list
-
-        
 
 class SouvenirSkin(CreateSkin):
     create = models.ForeignKey(Souvenir, on_delete=models.CASCADE)
