@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 class SteamItem(models.Model):
     name = models.TextField(_("Name"))
     description = models.TextField(_("Description"), blank=True, null=True)
-    image = models.URLField(_("Image URL"))
+    image = models.URLField(_("Image URL"),default='non skin url')
 
     class Meta:
         abstract = True
@@ -63,20 +63,6 @@ class Pattern(models.Model):
 class Collection(SteamItem):
     pass
 
-class Category(models.Model):
-    name = models.TextField(_("category name"))    
-
-    class Meta:
-        verbose_name = _("Category")
-        verbose_name_plural = _("Categorys")
-
-    def __str__(self):
-        return self.name
-
-    def get_absolute_url(self):
-        return reverse("Category_detail", kwargs={"pk": self.pk})
-
-
 class Case(Crate):
 
     class Meta:
@@ -108,7 +94,7 @@ class Weapon(SteamItem):
 class Skin(SteamItem):
     weapon = models.ForeignKey(Weapon, verbose_name=_("Weapon"), on_delete=models.CASCADE)
     rarity = models.ForeignKey(Rarity, verbose_name=_("Rarity"), on_delete=models.CASCADE)
-    pattern = models.ForeignKey(Pattern, verbose_name=_("Pattern"), on_delete=models.CASCADE, default=None)
+    pattern = models.ForeignKey(Pattern, verbose_name=_("Pattern"), on_delete=models.CASCADE, null=True)
     min_float = models.FloatField(_("Minimum Float"))
     max_float = models.FloatField(_("Maximum Float"))
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
@@ -138,13 +124,6 @@ class Skin(SteamItem):
     
     def __str__(self):
         return self.weapon.name + " | " + self.name
-    
-    def save(self, *args, **kwargs):
-        if self.pattern_id is None and self.name:
-            default_pattern, _ = Pattern.objects.get_or_create(name=self.name)
-            self.pattern = default_pattern
-
-        super().save(*args, **kwargs)
 
 class CrateSkin(Skin):
     create = models.ForeignKey(Crate, on_delete=models.CASCADE)
