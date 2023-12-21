@@ -16,6 +16,18 @@ class SteamItem(models.Model):
     
     def __str__(self):
         return self.name
+    
+    def get_or_create(self, *args, **kwargs):
+        print(self.__str__())
+        super().get_or_create(*args, **kwargs)
+
+    def get(self, *args, **kwargs):
+        print(self.__str__())
+        super().get(*args, **kwargs)
+
+    def save(self, *args, **kwargs):
+        print(self.__str__())
+        super().save(*args, **kwargs)
 
 #Ceate, Abstract class for extend cases, capsules, packages, etc.
 class Crate(SteamItem):
@@ -126,7 +138,7 @@ class Skin(SteamItem):
         return self.weapon.name + " | " + self.name
 
 class CrateSkin(Skin):
-    create = models.ForeignKey(Crate, on_delete=models.CASCADE)
+    crate = models.ForeignKey(Crate, on_delete=models.CASCADE)
     SPECIAL_CONDITION = None
 
     class Meta:
@@ -150,7 +162,7 @@ class CrateSkin(Skin):
         return url_list
 
 class SouvenirSkin(CrateSkin):
-    create = models.ManyToManyField(Souvenir, verbose_name=_("Soubenir packages"))
+    crate = models.ManyToManyField(Souvenir, verbose_name=_("Soubenir packages"))
     SPECIAL_CONDITION = 'Souvenir'
 
 class CaseSkin(CrateSkin):
