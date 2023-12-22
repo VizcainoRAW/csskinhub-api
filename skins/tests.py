@@ -1,6 +1,8 @@
 from django.test import TestCase
 from skins.models import *
 
+from django.core.management import call_command
+
 class TestSkinsModels(TestCase):
     def setUp(self):
         # Creating categories
@@ -49,7 +51,7 @@ class TestSkinsModels(TestCase):
             collection=anubis_collection,
             weapon=m4a4
             )
-        m4a4_souvenir_skin.create.add(
+        m4a4_souvenir_skin.crate.add(
             Souvenir.objects.create(
                 name="Souvenir Package",
                 description="A package containing souvenir items",
@@ -68,7 +70,7 @@ class TestSkinsModels(TestCase):
             max_float=0.5,
             collection=revolution_collection,
             weapon=m4a4,
-            create=Case.objects.create(
+            crate=Case.objects.create(
                 name="Sticker Capsule",
                 description="A capsule containing stickers",
                 image="https://example.com/sticker-capsule.jpg",
@@ -80,3 +82,6 @@ class TestSkinsModels(TestCase):
         self.assertEqual(Skin.objects.count(), 3)
         self.assertEqual(SouvenirSkin.objects.count(), 1)
         self.assertEqual(CaseSkin.objects.count(), 1)
+    
+    def setUp(self):
+        call_command('loadbymykelskins')

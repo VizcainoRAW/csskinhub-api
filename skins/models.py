@@ -16,18 +16,6 @@ class SteamItem(models.Model):
     
     def __str__(self):
         return self.name
-    
-    def get_or_create(self, *args, **kwargs):
-        print(self.__str__())
-        super().get_or_create(*args, **kwargs)
-
-    def get(self, *args, **kwargs):
-        print(self.__str__())
-        super().get(*args, **kwargs)
-
-    def save(self, *args, **kwargs):
-        print(self.__str__())
-        super().save(*args, **kwargs)
 
 #Ceate, Abstract class for extend cases, capsules, packages, etc.
 class Crate(SteamItem):
@@ -109,7 +97,7 @@ class Skin(SteamItem):
     pattern = models.ForeignKey(Pattern, verbose_name=_("Pattern"), on_delete=models.CASCADE, null=True)
     min_float = models.FloatField(_("Minimum Float"))
     max_float = models.FloatField(_("Maximum Float"))
-    collection = models.ForeignKey(Collection, on_delete=models.CASCADE)
+    collection = models.ForeignKey(Collection, on_delete=models.CASCADE, null=True)
 
     class Meta:
         verbose_name = _("Skin")
@@ -166,5 +154,17 @@ class SouvenirSkin(CrateSkin):
     SPECIAL_CONDITION = 'Souvenir'
 
 class CaseSkin(CrateSkin):
-    create = models.ForeignKey(Case, on_delete=models.CASCADE)
+    crate = models.ForeignKey(Case, on_delete=models.CASCADE)
+    SPECIAL_CONDITION = 'StatTrak™'
+
+class RareSkin(CrateSkin):
+    crate = models.ManyToManyField(Case, verbose_name=_("Cases"))
+
+    class meta:
+        abstract = True
+
+class GloveSkin(RareSkin):
+    pass
+
+class KniveSkin(RareSkin):
     SPECIAL_CONDITION = 'StatTrak™'
