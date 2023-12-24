@@ -9,7 +9,7 @@ from django.utils.translation import gettext_lazy as _
 class SteamItem(models.Model):
     name = models.TextField(_("Name"))
     description = models.TextField(_("Description"), blank=True, null=True)
-    image = models.URLField(_("Image URL"),default='non skin url')
+    image = models.URLField(_("Image URL"), default='non url')
 
     class Meta:
         abstract = True
@@ -19,7 +19,6 @@ class SteamItem(models.Model):
 
 #Ceate, Abstract class for extend cases, capsules, packages, etc.
 class Crate(SteamItem):
-    first_sale_date = models.DateField(_("First Sale Date"))
 
     class Meta:
         abstract = True
@@ -30,6 +29,9 @@ class Category(models.Model):
     class Meta:
         verbose_name = _("Category")
         verbose_name_plural = _("Categories")
+
+    def __str__(self) -> str:
+        return self.name
 
     def get_absolute_url(self):
         return reverse("category_detail", kwargs={"pk": self.pk})
@@ -92,11 +94,12 @@ class Weapon(SteamItem):
         return reverse("Weapon_detail", kwargs={"pk": self.pk})
 
 class Skin(SteamItem):
+    name = models.TextField(_("Name"), default='vanilla')
     weapon = models.ForeignKey(Weapon, verbose_name=_("Weapon"), on_delete=models.CASCADE)
     rarity = models.ForeignKey(Rarity, verbose_name=_("Rarity"), on_delete=models.CASCADE)
     pattern = models.ForeignKey(Pattern, verbose_name=_("Pattern"), on_delete=models.CASCADE, null=True)
-    min_float = models.FloatField(_("Minimum Float"))
-    max_float = models.FloatField(_("Maximum Float"))
+    min_float = models.FloatField(_("Minimum Float"), null=True)
+    max_float = models.FloatField(_("Maximum Float"),null=True)
     collection = models.ForeignKey(Collection, on_delete=models.CASCADE, null=True)
 
     class Meta:
@@ -126,7 +129,6 @@ class Skin(SteamItem):
         return self.weapon.name + " | " + self.name
 
 class CrateSkin(Skin):
-    crate = models.ForeignKey(Crate, on_delete=models.CASCADE)
     SPECIAL_CONDITION = None
 
     class Meta:
@@ -150,15 +152,15 @@ class CrateSkin(Skin):
         return url_list
 
 class SouvenirSkin(CrateSkin):
-    crate = models.ManyToManyField(Souvenir, verbose_name=_("Soubenir packages"))
+    crates = models.ManyToManyField(Souvenir, verbose_name=_("Soubenir packages"))
     SPECIAL_CONDITION = 'Souvenir'
 
 class CaseSkin(CrateSkin):
-    crate = models.ForeignKey(Case, on_delete=models.CASCADE)
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, verbose_name=_("Case"))
     SPECIAL_CONDITION = 'StatTrak™'
 
 class RareSkin(CrateSkin):
-    crate = models.ManyToManyField(Case, verbose_name=_("Cases"))
+    crates = models.ManyToManyField(Case, verbose_name=_("Cases"))
 
     class meta:
         abstract = True

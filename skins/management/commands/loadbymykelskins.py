@@ -4,22 +4,16 @@ from skins.models import *
 import requests
 
 class Command(BaseCommand):
-    help = "Cargar datos de skins desde un archivo JSON o una URL"
-
-    def add_arguments(self, parser):
-        parser.add_argument(
-            '--url',
-            dest='url', 
-            type=str, 
-            default='https://bymykel.github.io/CSGO-API/api/en/skins.json', 
-            help='URL para descargar el archivo JSON'
-        )
+    help = "Load skin data from a JSON file or URL"
+    SKINS_JSON_URL = 'https://bymykel.github.io/CSGO-API/api/en/skins.json'
 
     def handle(self, *args, **options):
         self.create_collections()
+        self.create_rarities()
         self.create_categories()
-        self.create_crates()
+        self.populate_crates_from_json()
         self.create_skins()
+
 
     def get_json(self, url):
         try:
@@ -27,168 +21,158 @@ class Command(BaseCommand):
             response.raise_for_status()
             return response.json()
         except requests.exceptions.RequestException as e:
-            self.stderr.write(self.style.ERROR(f'Error al obtener datos desde la URL: {e}'))
+            self.stderr.write(self.style.ERROR(f'Error fetching data from URL: {e}'))
             return None
-    
-    def clear_string(self, string:str, part:int, character):
-        return string.split(character)[part].strip()
 
-    def create_crates(self):
-        crates = self.get_json('https://bymykel.github.io/CSGO-API/api/en/crates.json')
 
-        for crate in crates:
-            if crate['type']:
-                if 'Case' in crate['type']:
-                    self.create_crate(Case, crate)
-                
-                if 'Souvenir' in crate['type']:
-                    self.create_crate(Souvenir, crate)
+    def populate_crates_from_json(self) -> None:
+        """Populate crates data from a JSON source."""
+        crates_data = self.get_json('https://bymykel.github.io/CSGO-API/api/en/crates.json')
 
-    def create_crate(self, crate_instance: type[Crate], json):
-        try:
-            crate_instance.objects.get_or_create(
-                name=json['name'],
-                description=json['description'],
-                image=json['image'],
-                first_sale_date='2020-01-01'
-            )
-            print(f"created {json['name']}")
+        for crate_data in crates_data:
+            if not crate_data['type']:
+                continue
+            if 'Case' in crate_data['type']:
+                self.create_crate_from_data(Case, crate_data)
+            if 'Souvenir' in crate_data['type']:
+                self.create_crate_from_data(Souvenir, crate_data)
+
+
+    def create_crate_from_data(self, crate_instance:type[Crate],crate_data) -> None:
+        try:   
+            crate = crate_instance.objects.get_or_create(
+            name=crate_data['name'],
+            description=crate_data['description'],
+            image=crate_data['image'],
+            )[0]
+            print(f'created {crate.__class__.__name__}: {crate}')
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f'Error al crear la caja {json["name"]}: {e}'))
+            self.stderr.write(self.style.ERROR(f'Error creating crate {crate_data["name"]}: {e}'))
+
 
     def create_collections(self):
-        collections = self.get_json('https://bymykel.github.io/CSGO-API/api/en/collections.json')
+        collections_data = self.get_json('https://bymykel.github.io/CSGO-API/api/en/collections.json')
 
-        for collection in collections:
-            self.create_collection(collection)
+        for collection_data in collections_data:
+            self.create_collection(collection_data)
 
-    def create_collection(self, json):
+
+    def create_collection(self, collection_data):
         try:
-            Collection.objects.get_or_create(name=json['name'], image=json['image'])
-            print(f"created {json['name']}")
+            Collection.objects.get_or_create(
+                name=collection_data['name'],
+                image=collection_data['image'])
+            print(f"Created {collection_data['name']}")
         except Exception as e:
-            self.stderr.write(self.style.ERROR(f'Error al crear la colección {json["name"]}: {e}'))
+            self.stderr.write(self.style.ERROR(f'Error creating collection {collection_data["name"]}: {e}'))
+
 
     def create_categories(self):
-        categories = ['Knives', 'Pistols', 'SMGs', 'Heavy', 'Rifles']
+        categories = ['Gloves', 'Knives', 'Pistols', 'SMGs', 'Heavy', 'Rifles']
+        for category_name in categories:
+            print(f'Created category: {Category.objects.get_or_create(name=category_name)[0]}')
 
-        categories_objects = [Rarity.objects.get_or_create(name=category_name)[0] for category_name in categories]
 
-        return categories_objects
 
     def create_rarities(self):
-        rarities = ['Consumer Grade', 'Base Grade', 'Industrial Grade', 'Mil-Spec', 'Restricted', 'Classified', 'Covert', 'Extraordinary', 'Rare Special', 'Gloves', 'Knives', 'Contraband']
+        rarities = ['Consumer Grade', 'Base Grade', 'Industrial Grade', 'Mil-Spec Grade', 'Restricted', 'Classified', 'Covert', 'Extraordinary', 'Rare Special', 'Gloves', 'Knives', 'Contraband']
+        for rarity_name in rarities:
+            print(f'created rarity: {Rarity.objects.get_or_create(name=rarity_name)[0]}')
 
-        rarity_objects = [Rarity.objects.get_or_create(name=rarity_name)[0] for rarity_name in rarities]
 
-        return rarity_objects
-
-    def create_skins(self):
-        skins = self.get_json('https://bymykel.github.io/CSGO-API/api/en/skins.json')
+    def create_skins(self) -> None:
+        skins = self.get_json(self.SKINS_JSON_URL)
 
         for skin in skins:
-            category = skin['category']['name']
-            crate = skin['crates']
+            skin_type, skin_values = self.create_skin_info_dict(skin)
+            self.create_skin(skin_type, **skin_values)
 
-            if 'Knive' in category:
-                self.create_rare_skin(skin, KniveSkin)
 
-            elif 'Gloves' in category:
-                self.create_rare_skin(skin, GloveSkin)
-
-            elif crate:
-                crate_name = skin['crates'][0]['name']
-                print(crate_name)
-
-                if 'Case' in crate_name:
-                    self.create_case_skin(skin)
-                if 'Souvenir' in crate_name:
-                    self.create_souvenir_skin(skin)
-            else:
-                self.create_skin(skin)
-
-    def create_skin(self, skin):
-        try:
-            Skin.objects.get_or_create(
-                name=self.clear_string(string=skin['name'], character='|', part=1),
-                description=skin['description'],
-                image=skin['image'],
-                weapon=Weapon.objects.get_or_create(
-                    name=skin['weapon']['name'],
-                    category=Category.objects.get(name=skin['category']['name'])
-                )[0],
-                rarity=Rarity.objects.get(name=skin['rarity']['name'].replace('Mil-spec Grade','Mil-spec').strip()),
-                pattern=Pattern.objects.get_or_create(name=skin['pattern']['name'])[0],
-                collection=Collection.objects.get(name=skin['collections'][0]['name']),
-                min_float=skin['min_float'],
-                max_float=skin['max_float']
-            )
-            print(f"created {skin['name']}")
-        except Exception as e:
-            self.stderr.write(self.style.ERROR(f'Error al crear la skin {skin["name"]}: {e}'))
-
-    def create_case_skin(self, skin):
-        try:
-            CaseSkin.objects.get_or_create(
-                name=self.clear_string(string=skin['name'], character='|', part=1),
-                description=skin['description'],
-                image=skin['image'],
-                weapon=Weapon.objects.get_or_create(
-                    name=skin['weapon']['name'],
-                    category=Category.objects.get_or_create(name=skin['category']['name'])[0]
-                )[0],
-                rarity=Rarity.objects.get_or_create(name=skin['rarity']['name'])[0],
-                pattern=Pattern.objects.get_or_create(name=skin['pattern']['name'])[0],
-                collection=Collection.objects.get(name=skin['collections'][0]['name']),
-                crate=Case.objects.get(name=skin['crates'][0]['name']),
-                min_float=skin['min_float'],
-                max_float=skin['max_float']
-            )
-            print(f"created {skin['name']}")
-        except Exception as e:
-            self.stderr.write(self.style.ERROR(f'Error al crear la skin de caja {skin["name"]}: {e}'))
-
-    def create_souvenir_skin(self, skin):
-        try:
-            SouvenirSkin.objects.get_or_create(
-                name=self.clear_string(string=skin['name'], character='|', part=1),
-                description=skin['description'],
-                image=skin['image'],
-                weapon=Weapon.objects.get_or_create(
-                    name=skin['weapon']['name'],
-                    category=Category.objects.get_or_create(name=skin['category']['name'])[0]
-                )[0],
-                rarity=Rarity.objects.get_or_create(name=skin['rarity']['name'])[0],
-                pattern=Pattern.objects.get_or_create(name=skin['pattern']['name'])[0],
-                collection=Collection.objects.get(name=skin['collections'][0]['name']),
-                min_float=skin['min_float'],
-                max_float=skin['max_float']
-            )
-            print(f"created {skin['name']}")
-        except Exception as e:
-            self.stderr.write(self.style.ERROR(f'Error al crear la Souvenir skin: {skin["name"]}: {e}'))
-    
-    def create_rare_skin(self, skin, skin_instance:type[RareSkin]):
-        try: 
-            created_skin = skin_instance.objects.get_or_create(
-            name=self.clear_string(string=skin['name'], character='|', part=1),
-            description=skin['description'],
-            image=skin['image'],
-            weapon=Weapon.objects.get_or_create(
-                name=skin['weapon']['name'],
-                category=Category.objects.get_or_create(name=skin['category']['name'])[0]
-            )[0],
-            rarity=Rarity.objects.get_or_create(name=skin['rarity']['name'])[0],
-            pattern=Pattern.objects.get_or_create(name=skin['pattern']['name'])[0],
-            min_float=skin['min_float'],
-            max_float=skin['max_float']
+    def create_skin_info_dict(self, data):
+        name = data['pattern']['name'] if data['pattern'] else 'Vanilla'
+        pattern = Pattern.objects.get_or_create(name=name)[0]
+        description = data['description']
+        image = data['image']
+        weapon = Weapon.objects.get_or_create(
+            name = data['weapon']['name'],
+            category = Category.objects.get(name=data['category']['name'])
             )[0]
-            for case in skin['crates']:
-                created_skin.crate.add( Case.objects.get(name=case['name']) )
-                print(f"created {skin['name']}")
+        rarity = Rarity.objects.get(name=data['rarity']['name'])
+        crates_data = data['crates']
+        min_float = data['min_float'] 
+        max_float = data['max_float']
+        skin_type = Skin  # default 
 
-        except Exception as e:
-            self.stderr.write(self.style.ERROR(f'Error al crear la Souvenir skin: {skin["name"]}: {e}'))
-
-
+        skin_values = {
+            'name': name,
+            'description': description,
+            'image': image,
+            'weapon': weapon,
+            'rarity': rarity,
+            'pattern': pattern,
+            'min_float': min_float,
+            'max_float': max_float
+        }
         
+        if crates_data:
+            crate_name = data['crates'][0]['name']
+
+            if 'Case' in crate_name:
+                case = Case.objects.get(name=crates_data[0]['name'])
+                skin_type = CaseSkin
+                skin_values['case'] = case
+            
+            if 'souvenir' in crate_name:
+                skin_type = SouvenirSkin
+                crates = self.list_skin_crates(Souvenir, crates_data)
+                skin_values['crates_list'] = crates
+
+            return skin_type, skin_values
+
+        if 'Knives' in data['category']['name']:
+            skin_type = KniveSkin
+
+            if crates_data:
+                crates = self.list_skin_crates(Case, crates_data)
+                skin_values['crates_list'] = crates
+                return skin_type, skin_values
+
+        if 'Gloves' in data['category']['name']:
+            skin_type = GloveSkin
+
+            if crates_data:
+                crates = self.list_skin_crates(Case, crates_data)
+                skin_values['crates_list'] = crates
+                return skin_type, skin_values
+        
+        if data['stattrak'] and not data['souvenir']:
+            case = Case.objects.last()
+            skin_type = CaseSkin
+            skin_values['case'] = case
+            return skin_type, skin_values
+
+        return skin_type, skin_values
+
+
+    def list_skin_crates(self, crates_instance:type[Crate], crates_data):
+        crates = []
+        for crate in crates_data:
+            try:
+                crates.append( crates_instance.objects.get(name=crate['name']) )
+            except Exception as e:
+                print(f'append crate error, crate {crate['name']}, error: {e}')
+        return crates
+
+
+    def create_skin(self, skin_type:type[Skin],**skin_values):
+        try:
+            valid_field_names = [f.name for f in skin_type._meta.get_fields()]
+            filtered_data = {k: v for k, v in skin_values.items() if k in valid_field_names}
+
+            instance = skin_type.objects.create(**filtered_data)
+            
+            if  hasattr(instance, 'crates'):
+                instance.crates.add(*skin_values['crates_list'])
+            print(f'Created {instance.__class__.__name__}: {instance}')
+        except Exception as e:
+            self.stderr.write(self.style.ERROR(f'Error creating {skin_type}: {skin_values["name"]}: {e}'))
