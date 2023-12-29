@@ -156,7 +156,7 @@ class SouvenirSkin(CrateSkin):
     SPECIAL_CONDITION = 'Souvenir'
 
 class CaseSkin(CrateSkin):
-    case = models.ForeignKey(Case, on_delete=models.CASCADE, verbose_name=_("Case"))
+    case = models.ForeignKey(Case, on_delete=models.CASCADE, related_name='skins', verbose_name=_("Case"))
     SPECIAL_CONDITION = 'StatTrak™'
 
 class RareSkin(CrateSkin):
