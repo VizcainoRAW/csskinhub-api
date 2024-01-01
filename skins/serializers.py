@@ -1,4 +1,4 @@
-from rest_framework import serializers
+from rest_framework import serializers, generics
 from skins.models import Case, CaseSkin, Category, Rarity, Weapon
 
 class RaritySerializer(serializers.ModelSerializer):
@@ -6,19 +6,13 @@ class RaritySerializer(serializers.ModelSerializer):
         model = Rarity
         fields = ['id','name']
 
-class CategorySerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Category
-        fields = ['id','name']
-
 class WeaponSerializer(serializers.ModelSerializer):
-    category = CategorySerializer(many=False, read_only=True)
     
     class Meta:
         model = Weapon
-        fields = ['id','name','category']
+        fields = ['id','name']
 
-class CaseSkinSerializer(serializers.ModelSerializer):
+class SkinSerializer(serializers.ModelSerializer):
     weapon = WeaponSerializer(many=False, read_only=True)
     rarity = RaritySerializer(many=False, read_only=True)
 
@@ -27,8 +21,20 @@ class CaseSkinSerializer(serializers.ModelSerializer):
         fields = ['id','name','image','weapon','rarity']
 
 class CaseSerializer(serializers.ModelSerializer):
-    skins = CaseSkinSerializer(many=True, read_only=True)
+    skins = SkinSerializer(many=True, read_only=True)
 
     class Meta:
         model = Case
         fields = ['id','name','description','image','skins']
+
+class CaseListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Case
+        fields = ['id', 'name','image']
+
+class CategoryListSerializer(serializers.ModelSerializer):
+    weapons = WeaponSerializer(source='weapon_set', many=True)
+
+    class Meta:
+        model = Category
+        fields = ['id','name','weapons']
